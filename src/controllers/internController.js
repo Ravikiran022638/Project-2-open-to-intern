@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const internModel = require("../models/internModel")
 const collegeModel = require("../models/collegeModel")
 
@@ -6,51 +5,67 @@ const collegeModel = require("../models/collegeModel")
 
 const createInterns = async function (req, res) {
   try {
-    let intern = req.body;
-    
-    let internCreated = await internModel.create(intern)
-    return res.status(201).send({ data: internCreated })
+    const data = req.body;
 
+    let {
+      name,
+      email,
+      mobile,
+      collegeName
+    } = data
 
+    let dbcollegeName = await collegeModel.findOne({
+      name: collegeName,
+      isDeleted: false
+    })
+
+    let insertIntern = {
+      name,
+      email,
+      mobile,
+      collegeId: dbcollegeName._id
+
+    }
+
+    const internDetail = await internModel.create(insertIntern)
+
+    return res.status(201).send({ status: true, data: internDetail })
 
   } catch (err) {
-    console.log("This is the error:", err.message)
-    res.status(500).send({ msg: "Error", error: err.message })
-
+    console.log(err.message);
+    res.status(500).send({ status: false, msg: "Server Error: " + err.message });
   }
+
 }
 
 /*........................................................Get College Details.......................................................................*/
 
-const getCollegeDetails = async (req, res) => {
+const getCollegeDetails = async function (req, res) {
 
   try {
 
-      // get college name from query params
-      const collegeName = req.query.name
-      const internDetail = internModel.interSchema
-      const output = {}
+    const collegeName = req.query.collegeName
+    const output = {}
+    const collegeData = await collegeModel.findOne({ name: collegeName, isDeleted: false })
 
-      // find college data by using college name
-      const collegeData = await collegeModel.findOne({ name: collegeName, isDeleted: false })
+    const internsList = await internModel.find({ collegeId: collegeData._id, isDeleted: false }).select({
+      name: 1,
+      email: 1,
+      mobile: 1
+    })
+    output.name = collegeData.name
+    output.fullName = collegeData.fullName
+    output.logoLink = collegeData.logoLink
+    output.interns = internsList
 
-      const internsList = await internModel.find({ collegeId: collegeData.collegeName, isDeleted: false }).select({
-          name: 1,
-          email: 1,
-          mobile: 1
-      })
-
-      output.name = collegeData.name
-      output.fullName = collegeData.fullName
-      output.logoLink = collegeData.logoLink
-      output.interns = internsList
-
-      return res.status(200).send({ status: true, data: output })
+    return res.status(200).send({ status: true, data: output })
 
   }
   catch (err) {
-      return res.status(500).send({ status: true, data: err.message })
+    return res.status(500).send({ status: true, data: "Server Error:" + err.message })
   }
+
+
 }
 
 module.exports.createInterns = createInterns;
